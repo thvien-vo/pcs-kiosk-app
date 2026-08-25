@@ -58,7 +58,7 @@ export const qrDisplayScreen = {
           <canvas class="qr-display__canvas"></canvas>
         </div>
         
-        <p class="qr-display__label">Vui lòng quét mã để tiếp tục</p>
+        <p class="qr-display__label">Please scan the QR code to continue</p>
       </div>
     `;
 

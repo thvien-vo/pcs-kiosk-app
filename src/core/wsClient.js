@@ -182,7 +182,7 @@ class WsClient {
       this.#errorShown = true;
       console.warn(`[WS ${ts()}] Đã thất bại ${this.#failureCount} lần → Hiển thị màn hình lỗi kết nối`);
       stateMachine.forceTransition(STATES.ERROR, {
-        message: 'Mất kết nối hệ thống. Đang thử kết nối lại…',
+        message: 'System connection lost. Reconnecting…',
       });
     }
 

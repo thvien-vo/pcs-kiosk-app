@@ -46,7 +46,7 @@ export const idleScreen = {
         preload="auto"
       ></video>
       <div class="idle__overlay" aria-hidden="true">
-        <p class="idle__prompt">Chạm vào màn hình để bắt đầu</p>
+        <p class="idle__prompt">Touch the screen to start</p>
       </div>
     `;
 
