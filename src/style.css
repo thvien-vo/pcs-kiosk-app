@@ -1,0 +1,346 @@
+/* ============================================================
+   GLOBAL RESET & BASE
+   ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 1024px;
+  height: 600px;
+  overflow: hidden; /* Kiosk: không scroll */
+  background: #000;
+  font-family: 'Be Vietnam Pro', 'Roboto', sans-serif;
+  color: #fff;
+  /* Tắt text selection và context menu khi chạm giữ lâu trên màn hình cảm ứng */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none; /* iOS: tắt menu Copy/Paste/Define khi giữ lâu */
+}
+
+/* ============================================================
+   LAYER LAYOUT
+   ============================================================ */
+#bg-layer,
+#ui-layer {
+  position: fixed;
+  inset: 0; /* top: 0; right: 0; bottom: 0; left: 0 */
+  width: 1024px;
+  height: 600px;
+}
+
+#bg-layer {
+  z-index: 1;
+  pointer-events: none; /* Lớp nền không nhận tương tác */
+}
+
+#ui-layer {
+  z-index: 2;
+  /* Nền trong suốt theo mặc định; từng màn hình tự định nghĩa nền riêng */
+  background: transparent;
+}
+
+/* ============================================================
+   SCREEN BASE — Dùng cho tất cả 5 màn hình
+   ============================================================ */
+.screen {
+  position: absolute;
+  inset: 0;
+  width: 1024px;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  /* Transition opacity + transform để fade nhẹ nhàng */
+  opacity: 0;
+  transform: scale(0.98);
+  transition:
+    opacity 350ms ease,
+    transform 350ms ease;
+  /* Ở trạng thái ẩn: pointer-events tắt để không chặn click */
+  pointer-events: none;
+}
+
+.screen.is-active {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* ============================================================
+   MÀN HÌNH IDLE
+   ============================================================ */
+
+/* Container: nền đen, video sẽ phủ toàn bộ */
+.screen--idle {
+  background: #000;
+  /* Không dùng flex-center — video và overlay tự định vị tuyệt đối */
+  display: block;
+  cursor: pointer; /* Gợi ý "có thể chạm" trên thiết bị có con trỏ */
+}
+
+/* Video nền full-screen, object-fit: cover để không bị letterbox */
+.idle__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Tắt outline focus trên một số trình duyệt */
+  outline: none;
+  /* Không nhận pointer events — click bắt trên container cha */
+  pointer-events: none;
+}
+
+/* Lớp đè trên video: căn giữa nội dung, nền bán trong suốt tùy chọn */
+.idle__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;     /* Dòng chữ nằm phía dưới, tránh che nội dung video */
+  justify-content: center;
+  padding-bottom: 56px;
+  /* Không nhận pointer events — click bắt trên container cha */
+  pointer-events: none;
+}
+
+/* Dòng chữ nhấp nháy */
+.idle__prompt {
+  font-size: 28px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+  /* REMOVED: text-shadow — khi kết hợp với animation opacity, browser phải
+     repaint shadow mỗi frame của vòng blink 2.4s. Xoá để animation chạy
+     hoàn toàn trên compositor thread (chỉ đổi opacity layer). */
+  animation: idle-prompt-blink 2.4s ease-in-out infinite;
+  will-change: opacity; /* Gợi ý browser tạo sẵn compositor layer cho element này */
+  /* Tắt text selection ngay cả khi user kéo qua */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Keyframe: nhấp nháy opacity nhẹ nhàng, không gắt */
+@keyframes idle-prompt-blink {
+  0%,
+  100% { opacity: 1; }
+  50%  { opacity: 0.25; }
+}
+
+
+/* ============================================================
+   CÁC MÀN HÌNH KHÔNG PHẢI IDLE — Nền đục che kín bg-layer
+   ============================================================ */
+.screen--qr-display,
+.screen--success,
+.screen--error,
+.screen--maintenance {
+  background: #111; /* Có thể chỉnh màu thương hiệu sau */
+}
+
+/* ============================================================
+   MÀN HÌNH QR DISPLAY
+   ============================================================ */
+.qr-display__wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+/* Timer SVG */
+.qr-display__timer-wrapper {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-display__svg-timer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* Bắt đầu vòng tròn từ góc 12h */
+}
+
+.qr-display__circle-bg {
+  fill: none;
+  stroke: #333;
+  stroke-width: 6;
+}
+
+.qr-display__circle-progress {
+  fill: none;
+  stroke: #10b981; /* Xanh lá */
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear; /* Animate mượt giữa mỗi tick 1s */
+}
+
+.qr-display__time-text {
+  font-size: 28px;
+  font-weight: bold;
+  color: #fff;
+  z-index: 1;
+}
+
+/* QR Code */
+.qr-display__qr-container {
+  background: #fff;
+  padding: 16px;
+  border-radius: 16px;
+  /* REMOVED: box-shadow — tạo composite layer thừa trên Pi GPU.
+     Thay bằng border tĩnh, không tốn paint sau lần đầu. */
+  border: 3px solid rgba(255, 255, 255, 0.15);
+}
+
+.qr-display__canvas {
+  display: block; /* Xoá viền trống bên dưới canvas */
+}
+
+.qr-display__label {
+  font-size: 22px;
+  color: #d1d5db;
+  font-weight: 500;
+}
+
+/* ============================================================
+   CÁC MÀN HÌNH STATUS (SUCCESS, ERROR, MAINTENANCE)
+   ============================================================ */
+.status-screen__wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.status-screen__message {
+  font-size: 36px;
+  font-weight: 700;
+  margin-top: 16px;
+}
+
+.status-screen__message--success { color: #10b981; }
+.status-screen__message--error { color: #ef4444; }
+.status-screen__message--maintenance { color: #9ca3af; }
+
+.status-screen__hint {
+  font-size: 18px;
+  color: #6b7280;
+}
+
+.status-screen__btn {
+  margin-top: 24px;
+  padding: 16px 48px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  background-color: #ef4444;
+  border: none;
+  border-bottom: 3px solid #b91c1c; /* Thay box-shadow: tạo cảm giác nổi, không tốn composite layer */
+  border-radius: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.1s;
+}
+
+.status-screen__btn:active {
+  transform: scale(0.95);
+}
+
+/* ============================================================
+   SVG ANIMATIONS
+   ============================================================ */
+
+/* Success Icon */
+.success__icon-svg {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: block;
+  stroke-width: 4;
+  stroke: #10b981;
+  stroke-miterlimit: 10;
+  /* REMOVED: box-shadow tĩnh và animation success-fill animate box-shadow.
+     Animating box-shadow triggers full repaint mỗi frame — cực tốn GPU trên Pi.
+     Thay bằng animate opacity của SVG wrapper để đạt hiệu ứng tương tự
+     hoàn toàn trên compositor thread. */
+  animation: success-scale .3s ease-in-out .9s both;
+}
+
+/* Wrapper bao SVG để fade-in glow nhẹ qua opacity, không dùng box-shadow */
+.success__icon-svg-wrapper {
+  border-radius: 50%;
+  padding: 4px;
+  background: rgba(16, 185, 129, 0.1);
+  opacity: 0;
+  animation: success-wrapper-in .4s ease-in-out .4s forwards;
+}
+
+@keyframes success-wrapper-in {
+  to { opacity: 1; }
+}
+
+.success__icon-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-width: 4;
+  stroke-miterlimit: 10;
+  stroke: #10b981;
+  fill: none;
+  animation: success-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.success__icon-check {
+  transform-origin: 50% 50%;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: success-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+}
+
+@keyframes success-stroke {
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes success-scale {
+  0%, 100% { transform: none; }
+  50% { transform: scale3d(1.1, 1.1, 1); }
+}
+
+/* Error / Maintenance Icons */
+.error__icon-svg {
+  width: 120px;
+  height: 120px;
+}
+
+.maintenance__icon-svg {
+  width: 120px;
+  height: 120px;
+  animation: maintenance-spin 4s linear infinite;
+}
+
+@keyframes maintenance-spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   BACKGROUND LAYER — Nội dung nền
+   ============================================================ */
+#bg-layer video,
+#bg-layer canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1024, initial-scale=1.0" />
+    <title>PCS Kiosk</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!--
+      KIẾN TRÚC 2 LỚP:
+      #bg-layer (z-index: 1) — Lớp nền động, câm, không nhận tương tác.
+        Nội dung bên trong có thể là <video>, <canvas>, hoặc div CSS animation.
+        Việc thay ruột bên trong BG LAYER không ảnh hưởng đến #ui-layer.
+
+      #ui-layer (z-index: 2) — Lớp UI tương tác, chứa 5 màn hình.
+        Màn hình IDLE có nền trong suốt để thấy bg-layer bên dưới.
+        Các màn hình còn lại có nền đục, che kín bg-layer.
+    -->
+    <div id="bg-layer" aria-hidden="true">
+      <!-- Background.js sẽ inject nội dung vào đây -->
+    </div>
+
+    <div id="ui-layer">
+      <!-- screenManager.js sẽ inject nội dung màn hình vào đây -->
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
