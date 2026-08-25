@@ -1,31 +1,44 @@
 /**
  * wsClient.js — WebSocket client chuyên dụng cho Kiosk App
  *
- * GIAO THỨC MESSAGE TỪ SERVER (JSON):
+ * GIAO THỨC INBOUND (JSON nhận từ server):
  *
- *   Loại 1 — Kết quả AI nhận dạng rác:
- *   { "type": "ai_result", "qrData": "https://...", "expiresIn": 60 }
- *   → goToScreen('qr_display', payload)
+ *   { "type": "ai_result",        "qrData": "...", "expiresIn": 60 }
+ *     → QR_DISPLAY  (bất kỳ state nào)
  *
- *   Loại 2 — Trạng thái hệ thống:
- *   { "type": "system_status", "status": "maintenance", "message": "..." }
- *   { "type": "system_status", "status": "error",       "message": "..." }
- *   { "type": "system_status", "status": "success",     "message": "..." }
- *   { "type": "system_status", "status": "idle" }
- *   → goToScreen(<màn hình tương ứng>, payload)
+ *   { "event": "scan_confirmed",  "payload": { ... } }
+ *     → SUCCESS  (chỉ từ QR_DISPLAY)
+ *
+ *   { "event": "user_identified", "payload": { "userName": "...", "userId": "..." } }
+ *     → USER_IDENTIFIED  (chỉ từ QR_DISPLAY)
+ *
+ *   { "event": "points_awarded",  "payload": { "points": 10, "bottleType": "PET" } }
+ *     → SUCCESS  (chỉ từ USER_IDENTIFIED)
+ *
+ *   { "type": "system_status", "status": "idle"|"success"|"error"|"maintenance" }
+ *     → màn hình tương ứng (error/maintenance dùng forceTransition)
+ *
+ * GIAO THỨC OUTBOUND (JSON gửi lên server):
+ *
+ *   { "event": "register",      "payload": { "stationId": "01" } }
+ *     → Gửi tự động mỗi khi connect/reconnect thành công
+ *
+ *   { "event": "session_ended", "payload": { "reason": "...", "userId": "..." } }
+ *     → Gửi khi user bấm "Complete" từ màn UserIdentified
  *
  * CHIẾN LƯỢC RECONNECT:
- *   - Backoff: 1s → 2s → 4s → 8s → 10s (capped). Tối đa mỗi 10 giây.
- *   - Sau FAILURE_THRESHOLD lần thất bại liên tiếp: hiển thị màn hình error.
- *   - Tiếp tục thử lại ngầm vô hạn để tự phục hồi khi có mạng.
- *   - Khi kết nối lại thành công sau khi đã hiển thị error: tự chuyển về idle.
+ *   - Backoff: 1s → 2s → 4s → 8s → 10s (capped).
+ *   - Sau FAILURE_THRESHOLD lần thất bại: hiển thị màn hình error.
+ *   - Tiếp tục thử lại ngầm vô hạn để tự phục hồi.
+ *   - Khi reconnect thành công sau khi đã hiển thị error: tự về IDLE.
  *
  * CÁCH DÙNG:
  *   import { wsClient } from './wsClient.js';
- *   wsClient.connect(); // Lấy URL từ config.js
+ *   wsClient.connect();
+ *   wsClient.sendMessage('session_ended', { reason: 'completed', userId });
  */
 
-import { WS_URL } from '../config.js';
+import { WS_URL, STATION_ID } from '../config.js';
 import { stateMachine, STATES } from './StateMachine.js';
 
 // ─── Hằng số ─────────────────────────────────────────────────────────────────
@@ -144,6 +157,9 @@ class WsClient {
 
     console.info(`[WS ${ts()}] ✓ Kết nối thành công tới ${this.#url}`);
 
+    // Đăng ký station với backend ngay sau khi kết nối (và mỗi lần reconnect)
+    this.sendMessage('register', { stationId: STATION_ID });
+
     // Nếu trước đó đang ở màn hình error vì mất mạng → tự phục hồi về IDLE
     if (wasErrorShown) {
       console.info(`[WS ${ts()}] Phục hồi kết nối → về màn hình IDLE`);
@@ -222,6 +238,12 @@ class WsClient {
         break;
       case 'scan_confirmed':
         this.#handleScanConfirmed(msg);
+        break;
+      case 'user_identified':
+        this.#handleUserIdentified(msg);
+        break;
+      case 'points_awarded':
+        this.#handlePointsAwarded(msg);
         break;
       default:
         console.warn(`[WS ${ts()}] Tin nhắn không được nhận dạng: event/type="${key}"`);
@@ -306,6 +328,52 @@ class WsClient {
 
     const payload = msg.payload ?? {};
     console.info(`[WS ${ts()}] scan_confirmed → SUCCESS`, payload);
+    stateMachine.transition(STATES.SUCCESS, payload);
+  }
+
+  /**
+   * user_identified: người dùng đã xác nhận danh tính qua QR.
+   * Guard: chỉ hợp lệ khi đang ở QR_DISPLAY.
+   *
+   * Payload mong đợi:
+   *  { "event": "user_identified", "payload": { "userName": string, "userId": string } }
+   */
+  #handleUserIdentified(msg) {
+    const currentState = stateMachine.state;
+
+    if (currentState !== STATES.QR_DISPLAY) {
+      console.warn(
+        `[WS ${ts()}] user_identified bị bỏ qua — ` +
+        `state hiện tại là "${currentState}", chỉ hợp lệ ở "QR_DISPLAY".`,
+      );
+      return;
+    }
+
+    const payload = msg.payload ?? {};
+    console.info(`[WS ${ts()}] user_identified → USER_IDENTIFIED`, payload);
+    stateMachine.transition(STATES.USER_IDENTIFIED, payload);
+  }
+
+  /**
+   * points_awarded: điểm đã được cộng cho người dùng.
+   * Guard: chỉ hợp lệ khi đang ở USER_IDENTIFIED.
+   *
+   * Payload mong đợi:
+   *  { "event": "points_awarded", "payload": { "points": number, "bottleType": string } }
+   */
+  #handlePointsAwarded(msg) {
+    const currentState = stateMachine.state;
+
+    if (currentState !== STATES.USER_IDENTIFIED) {
+      console.warn(
+        `[WS ${ts()}] points_awarded bị bỏ qua — ` +
+        `state hiện tại là "${currentState}", chỉ hợp lệ ở "USER_IDENTIFIED".`,
+      );
+      return;
+    }
+
+    const payload = msg.payload ?? {};
+    console.info(`[WS ${ts()}] points_awarded → SUCCESS`, payload);
     stateMachine.transition(STATES.SUCCESS, payload);
   }
 }
