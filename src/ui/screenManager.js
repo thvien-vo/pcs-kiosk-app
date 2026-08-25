@@ -23,11 +23,12 @@
  *  goToScreen('qr_display', { qrValue: 'https://...' });
  */
 
-import { idleScreen } from './screens/Idle.js';
-import { qrDisplayScreen } from './screens/QrDisplay.js';
-import { successScreen } from './screens/Success.js';
-import { errorScreen } from './screens/Error.js';
-import { maintenanceScreen } from './screens/Maintenance.js';
+import { idleScreen }             from './screens/Idle.js';
+import { qrDisplayScreen }         from './screens/QrDisplay.js';
+import { userIdentifiedScreen }     from './screens/UserIdentified.js';
+import { successScreen }            from './screens/Success.js';
+import { errorScreen }              from './screens/Error.js';
+import { maintenanceScreen }        from './screens/Maintenance.js';
 
 /**
  * Map tên màn hình → module screen.
@@ -35,11 +36,12 @@ import { maintenanceScreen } from './screens/Maintenance.js';
  * @type {Record<string, { mount(el: HTMLElement, data: object): void, unmount(): void }>}
  */
 const SCREEN_MODULES = {
-  idle: idleScreen,
-  qr_display: qrDisplayScreen,
-  success: successScreen,
-  error: errorScreen,
-  maintenance: maintenanceScreen,
+  idle:             idleScreen,
+  qr_display:       qrDisplayScreen,
+  user_identified:  userIdentifiedScreen,
+  success:          successScreen,
+  error:            errorScreen,
+  maintenance:      maintenanceScreen,
 };
 
 /** Thời gian transition (ms) — phải khớp với CSS transition-duration trong style.css */

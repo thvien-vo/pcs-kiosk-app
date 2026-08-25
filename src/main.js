@@ -30,11 +30,12 @@ stateMachine.on(({ to, data }) => {
 
   // Ánh xạ STATES → tên màn hình screenManager
   const screenMap = {
-    [STATES.IDLE]:        'idle',
-    [STATES.QR_DISPLAY]:  'qr_display',
-    [STATES.SUCCESS]:     'success',
-    [STATES.ERROR]:       'error',
-    [STATES.MAINTENANCE]: 'maintenance',
+    [STATES.IDLE]:             'idle',
+    [STATES.QR_DISPLAY]:       'qr_display',
+    [STATES.USER_IDENTIFIED]:  'user_identified',
+    [STATES.SUCCESS]:          'success',
+    [STATES.ERROR]:            'error',
+    [STATES.MAINTENANCE]:      'maintenance',
   };
 
   const screenName = screenMap[to];

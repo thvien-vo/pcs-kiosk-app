@@ -336,6 +336,112 @@ body {
 }
 
 /* ============================================================
+   MÀN HÌNH USER_IDENTIFIED
+   ============================================================ */
+.screen--user-identified {
+  background: #111;
+}
+
+.user-identified__wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  width: 100%;
+  padding: 0 48px;
+}
+
+/* Greeting + instruction group */
+.user-identified__greeting-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.user-identified__greeting {
+  font-size: 42px;
+  font-weight: 700;
+  color: #10b981;
+  /* Fade-in on mount via .screen transition (opacity 0→1) */
+}
+
+.user-identified__instruction {
+  font-size: 22px;
+  font-weight: 400;
+  color: #d1d5db;
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+/* Pulse waiting indicator — opacity + scale only (no box-shadow/blur) */
+.user-identified__waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-identified__pulse {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.25);
+  /* Inner ring via outline — no box-shadow */
+  outline: 3px solid rgba(16, 185, 129, 0.6);
+  outline-offset: 0;
+  animation: ui-pulse 2s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes ui-pulse {
+  0%,  100% { opacity: 1;    transform: scale(1);    }
+  50%        { opacity: 0.35; transform: scale(1.18); }
+}
+
+.user-identified__waiting-label {
+  font-size: 18px;
+  color: #6b7280;
+  letter-spacing: 0.03em;
+}
+
+/* Footer: countdown + button */
+.user-identified__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-identified__timeout-hint {
+  font-size: 15px;
+  color: #4b5563;
+}
+
+/* "Complete" button — min 44×44px per accessibility guidelines */
+.user-identified__btn-complete {
+  min-width: 160px;
+  min-height: 44px;
+  padding: 12px 40px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  background: #374151;
+  border: 2px solid #6b7280;
+  border-radius: 10px;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.user-identified__btn-complete:active {
+  transform: scale(0.95);
+  background: #4b5563;
+}
+
+/* ============================================================
    BACKGROUND LAYER — Nội dung nền
    ============================================================ */
 #bg-layer video,

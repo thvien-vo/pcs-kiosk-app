@@ -97,6 +97,25 @@ class WsClient {
     console.info(`[WS ${ts()}] Đã ngắt kết nối thủ công.`);
   }
 
+  /**
+   * Gửi một event JSON tới server.
+   * Không làm gì nếu socket chưa kết nối (log warn thay vì throw).
+   *
+   * @param {string} eventType   - Tên event, ví dụ 'session_ended'
+   * @param {object} [payload={}] - Dữ liệu đính kèm
+   * @returns {boolean} true nếu gửi thành công
+   */
+  sendMessage(eventType, payload = {}) {
+    if (!this.#ws || this.#ws.readyState !== WebSocket.OPEN) {
+      console.warn(`[WS ${ts()}] sendMessage('${eventType}') bị bỏ qua — WebSocket chưa kết nối (state: ${this.#ws?.readyState ?? 'null'}).`);
+      return false;
+    }
+    const msg = JSON.stringify({ event: eventType, payload });
+    this.#ws.send(msg);
+    console.info(`[WS ${ts()}] → Gửi: event="${eventType}"`, payload);
+    return true;
+  }
+
   // ── Private: lifecycle ─────────────────────────────────────────────────────
 
   #open() {
