@@ -7,15 +7,18 @@
  *
  * Luồng tuần tự — dùng transition(), bị validate theo bảng ALLOWED_TRANSITIONS:
  *
- *   IDLE ──────────────────────────────→ QR_DISPLAY   (người dùng chạm)
- *   QR_DISPLAY ──────────────────────→ SUCCESS        (scan_confirmed từ WS)
- *   QR_DISPLAY ──────────────────────→ ERROR          (WS báo lỗi luồng)
- *   QR_DISPLAY ──────────────────────→ IDLE           (timeout 60s hết giờ)
- *   SUCCESS    ──────────────────────→ IDLE           (auto-return 4s)
- *   ERROR      ──────────────────────→ IDLE           (nút "Thử lại")
- *   MAINTENANCE ─────────────────────→ IDLE           (lệnh RESET_IDLE từ WS)
+ *   IDLE             ────────→ QR_DISPLAY       (người dùng chạm)
+ *   QR_DISPLAY       ────────→ USER_IDENTIFIED   (nhận "user_identified" từ WS)
+ *   QR_DISPLAY       ────────→ ERROR             (WS báo lỗi luồng)
+ *   QR_DISPLAY       ────────→ IDLE              (timeout 60s hết giờ)
+ *   USER_IDENTIFIED  ────────→ SUCCESS           (nhận "points_awarded" từ WS)
+ *   USER_IDENTIFIED  ────────→ IDLE              (nút "Complete")
+ *   USER_IDENTIFIED  ────────→ ERROR             (timeout 90s)
+ *   SUCCESS          ────────→ IDLE              (auto-return 4s)
+ *   ERROR            ────────→ IDLE              (nút "Thử lại")
+ *   MAINTENANCE      ────────→ IDLE              (lệnh RESET_IDLE từ WS)
  *
- * Luồng ưu tiên — dùng forceTransition(), cắt ngang MỌI state:
+ * Luồng ưu tiên — dùng forceTransition(), cắt ngang MỌI state (kể cả USER_IDENTIFIED):
  *   * → ERROR         (mất kết nối WS liên tiếp 3 lần)
  *   * → MAINTENANCE   (lệnh hệ thống từ server)
  *
@@ -27,11 +30,12 @@
  */
 
 export const STATES = /** @type {const} */ ({
-  IDLE: 'IDLE',
-  QR_DISPLAY: 'QR_DISPLAY',
-  SUCCESS: 'SUCCESS',
-  ERROR: 'ERROR',
-  MAINTENANCE: 'MAINTENANCE',
+  IDLE:             'IDLE',
+  QR_DISPLAY:       'QR_DISPLAY',
+  USER_IDENTIFIED:  'USER_IDENTIFIED',
+  SUCCESS:          'SUCCESS',
+  ERROR:            'ERROR',
+  MAINTENANCE:      'MAINTENANCE',
 });
 
 /**
@@ -40,23 +44,26 @@ export const STATES = /** @type {const} */ ({
  *
  * Key: state hiện tại → Value: mảng các state đích được phép.
  *
- *  IDLE        → [QR_DISPLAY]
- *  QR_DISPLAY  → [SUCCESS, ERROR, IDLE]   ← IDLE: timeout 60s hết giờ tự động
- *  SUCCESS     → [IDLE]
- *  ERROR       → [IDLE]
- *  MAINTENANCE → [IDLE]
+ *  IDLE            → [QR_DISPLAY]
+ *  QR_DISPLAY      → [USER_IDENTIFIED, ERROR, IDLE]
+ *  USER_IDENTIFIED → [SUCCESS, IDLE, ERROR]
+ *  SUCCESS         → [IDLE]
+ *  ERROR           → [IDLE]
+ *  MAINTENANCE     → [IDLE]
  */
 const ALLOWED_TRANSITIONS = {
-  [STATES.IDLE]:        [STATES.QR_DISPLAY],
-  [STATES.QR_DISPLAY]:  [STATES.SUCCESS, STATES.ERROR, STATES.IDLE],
-  [STATES.SUCCESS]:     [STATES.IDLE],
-  [STATES.ERROR]:       [STATES.IDLE],
-  [STATES.MAINTENANCE]: [STATES.IDLE],
+  [STATES.IDLE]:            [STATES.QR_DISPLAY],
+  [STATES.QR_DISPLAY]:      [STATES.USER_IDENTIFIED, STATES.ERROR, STATES.IDLE],
+  [STATES.USER_IDENTIFIED]: [STATES.SUCCESS, STATES.IDLE, STATES.ERROR],
+  [STATES.SUCCESS]:         [STATES.IDLE],
+  [STATES.ERROR]:           [STATES.IDLE],
+  [STATES.MAINTENANCE]:     [STATES.IDLE],
 };
 
 /**
  * Các state đích hợp lệ cho luồng ƯU TIÊN (forceTransition()).
- * Cho phép cắt ngang bất kỳ state nào, không qua bảng ALLOWED_TRANSITIONS.
+ * Cho phép cắt ngang bất kỳ state nào (kể cả USER_IDENTIFIED),
+ * không qua bảng ALLOWED_TRANSITIONS.
  * Chỉ dùng cho: mất kết nối WS (ERROR) và lệnh bảo trì hệ thống (MAINTENANCE).
  */
 const PRIORITY_STATES = new Set([STATES.ERROR, STATES.MAINTENANCE]);
