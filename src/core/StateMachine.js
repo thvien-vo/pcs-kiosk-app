@@ -14,8 +14,8 @@
  *   USER_IDENTIFIED  ────────→ SUCCESS           (nhận "points_awarded" từ WS)
  *   USER_IDENTIFIED  ────────→ IDLE              (nút "Complete")
  *   USER_IDENTIFIED  ────────→ ERROR             (timeout 90s)
- *   SUCCESS          ────────→ IDLE              (auto-return 4s)
- *   ERROR            ────────→ IDLE              (nút "Thử lại")
+ *   SUCCESS          ────────→ IDLE              (auto-return 4s / nút "Complete")
+ *   ERROR            ────────→ IDLE              (nút "Retry")
  *   MAINTENANCE      ────────→ IDLE              (lệnh RESET_IDLE từ WS)
  *
  * Luồng ưu tiên — dùng forceTransition(), cắt ngang MỌI state (kể cả USER_IDENTIFIED):
@@ -26,7 +26,7 @@
  *  import { stateMachine } from './StateMachine.js';
  *  stateMachine.on(({ from, to, data }) => { ... });
  *  stateMachine.transition(STATES.QR_DISPLAY);
- *  stateMachine.forceTransition(STATES.ERROR, { message: 'Lỗi server' });
+ *  stateMachine.forceTransition(STATES.ERROR, { message: 'Server error' });
  */
 
 export const STATES = /** @type {const} */ ({
@@ -82,9 +82,11 @@ class StateMachine extends EventTarget {
    * Gọi bởi:
    *  - Màn hình Idle: khi người dùng chạm (→ QR_DISPLAY)
    *  - Màn hình QrDisplay: khi timeout 60s (→ IDLE)
-   *  - wsClient: khi nhận scan_confirmed (→ SUCCESS)
-   *  - wsClient: khi nhận system_status idle/success (→ IDLE / SUCCESS)
-   *  - Màn hình Success/Error: auto-return / nút Thử lại (→ IDLE)
+   *  - wsClient: khi nhận user_identified (→ USER_IDENTIFIED)
+   *  - wsClient: khi nhận points_awarded (→ SUCCESS)
+   *  - Màn hình UserIdentified: timeout 90s (→ ERROR) / nút Complete (→ IDLE)
+   *  - Màn hình Success: auto-return 4s / nút Complete (→ IDLE)
+   *  - Màn hình Error: nút Retry (→ IDLE)
    *
    * @param {string} toState - State đích (dùng hằng số từ STATES)
    * @param {object} [data={}] - Dữ liệu tuỳ chọn truyền kèm

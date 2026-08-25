@@ -6,9 +6,6 @@
  *   { "type": "ai_result",        "qrData": "...", "expiresIn": 60 }
  *     → QR_DISPLAY  (bất kỳ state nào)
  *
- *   { "event": "scan_confirmed",  "payload": { ... } }
- *     → SUCCESS  (chỉ từ QR_DISPLAY)
- *
  *   { "event": "user_identified", "payload": { "userName": "...", "userId": "..." } }
  *     → USER_IDENTIFIED  (chỉ từ QR_DISPLAY)
  *
@@ -236,9 +233,6 @@ class WsClient {
       case 'system_status':
         this.#handleSystemStatus(msg);
         break;
-      case 'scan_confirmed':
-        this.#handleScanConfirmed(msg);
-        break;
       case 'user_identified':
         this.#handleUserIdentified(msg);
         break;
@@ -301,34 +295,6 @@ class WsClient {
     } else {
       stateMachine.transition(mapping.state, payload);
     }
-  }
-  /**
-   * Xử lý xác nhận người dùng đã quét QR thành công.
-   *
-   * Payload mong đợi:
-   *  { "event": "scan_confirmed", "payload": { "message": "string" } }
-   *
-   * QUY TẮC LUỒNG TUẦN TỰ:
-   *  Event này CHỈ hợp lệ khi app đang ở QR_DISPLAY.
-   *  Nếu nhận được lúc đang ở màn hình khác (ví dụ: IDLE, MAINTENANCE),
-   *  bỏ qua hoàn toàn để tránh nhảy cóc trạng thái sai.
-   *  Không dùng forceTransition — đây là chuyển đổi tuần tự bình thường.
-   */
-  #handleScanConfirmed(msg) {
-    const currentState = stateMachine.state;
-
-    // Guard: chỉ xử lý khi đang ở QR_DISPLAY
-    if (currentState !== STATES.QR_DISPLAY) {
-      console.warn(
-        `[WS ${ts()}] scan_confirmed bị bỏ qua — ` +
-        `state hiện tại là "${currentState}", chỉ hợp lệ ở "QR_DISPLAY".`,
-      );
-      return;
-    }
-
-    const payload = msg.payload ?? {};
-    console.info(`[WS ${ts()}] scan_confirmed → SUCCESS`, payload);
-    stateMachine.transition(STATES.SUCCESS, payload);
   }
 
   /**
