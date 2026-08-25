@@ -12,6 +12,7 @@
  */
 
 import QRCode from 'qrcode';
+import { STATION_ID } from '../../config.js';
 import { stateMachine, STATES } from '../../core/StateMachine.js';
 
 let _container = null;
@@ -21,10 +22,20 @@ const DEFAULT_EXPIRES_IN = 60; // Giây
 const CIRCLE_RADIUS = 45;
 const CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
 
+/**
+ * Sinh ID ngẫu nhiên cho phiên quét QR (timestamp + chuỗi ngẫu nhiên)
+ * @returns {string}
+ */
+function generateRandomId() {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${randomStr}`;
+}
+
 export const qrDisplayScreen = {
   /**
    * @param {HTMLElement} container
-   * @param {{ qrData: string, expiresIn?: number }} data
+   * @param {{ qrData?: string, expiresIn?: number }} data
    */
   mount(container, data = {}) {
     // Guard: clear interval cũ nếu mount() bị gọi lại trước unmount()
@@ -37,8 +48,10 @@ export const qrDisplayScreen = {
 
     _container = container;
 
-    // Dữ liệu mặc định nếu server chưa gửi tới
-    const qrData = data.qrData || 'https://example.com/payment';
+    // Sinh mã QR theo định dạng: pcs-station-{stationId}-session-{randomId}
+    const randomId = generateRandomId();
+    const defaultQr = `pcs-station-${STATION_ID}-session-${randomId}`;
+    const qrData = data.qrData || defaultQr;
     const totalTime = data.expiresIn || DEFAULT_EXPIRES_IN;
     let timeLeft = totalTime;
 
