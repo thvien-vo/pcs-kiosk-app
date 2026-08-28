@@ -435,6 +435,14 @@ body {
   letter-spacing: 0.03em;
 }
 
+.user-identified__points-status {
+  font-size: 20px;
+  font-weight: 600;
+  color: #10b981;
+  min-height: 28px; /* Reserve space to prevent layout shift when text appears */
+  letter-spacing: 0.02em;
+}
+
 /* Footer: countdown + button */
 .user-identified__footer {
   display: flex;

@@ -10,7 +10,7 @@
  *     → USER_IDENTIFIED  (chỉ từ QR_DISPLAY)
  *
  *   { "event": "points_awarded",  "payload": { "points": 10, "bottleType": "PET" } }
- *     → SUCCESS  (chỉ từ USER_IDENTIFIED)
+ *     → DOM event POINTS_AWARDED (chỉ khi đang ở USER_IDENTIFIED, UserIdentified.js xử lý cộng dồn)
  *
  *   { "type": "system_status", "status": "idle"|"success"|"error"|"maintenance" }
  *     → màn hình tương ứng (error/maintenance dùng forceTransition)
@@ -321,8 +321,11 @@ class WsClient {
   }
 
   /**
-   * points_awarded: điểm đã được cộng cho người dùng.
+   * points_awarded: điểm được cộng cho 1 chai nhựa.
    * Guard: chỉ hợp lệ khi đang ở USER_IDENTIFIED.
+   *
+   * KHÔNG chuyển state trực tiếp — phát DOM event POINTS_AWARDED
+   * để UserIdentified.js cộng dồn nhiều chai trong cùng 1 phiên.
    *
    * Payload mong đợi:
    *  { "event": "points_awarded", "payload": { "points": number, "bottleType": string } }
@@ -339,8 +342,8 @@ class WsClient {
     }
 
     const payload = msg.payload ?? {};
-    console.info(`[WS ${ts()}] points_awarded → SUCCESS`, payload);
-    stateMachine.transition(STATES.SUCCESS, payload);
+    console.info(`[WS ${ts()}] points_awarded → dispatch POINTS_AWARDED event`, payload);
+    document.dispatchEvent(new CustomEvent('POINTS_AWARDED', { detail: payload }));
   }
 }
 
